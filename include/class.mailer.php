@@ -17,6 +17,7 @@
 **********************************************************************/
 
 include_once(INCLUDE_DIR.'class.email.php');
+include_once(INCLUDE_DIR.'class.mailfetch.php');
 require_once(INCLUDE_DIR.'html2text.php');
 
 class Mailer {
@@ -583,8 +584,24 @@ class Mailer {
                 // Use persistent connection
                 $mail = $smtp_connections[$key];
             }
-
             $result = $mail->send($to, $headers, $body);
+// HOTFIX: save sent messages
+$fetcher = new MailFetcher(array(
+    'host'  => $this->email->ht['mail_host'],
+    'port'  => $this->email->ht['mail_port'],
+    'folder' => $this->email->ht['mail_archivefolder'],
+    'username'  => $this->email->ht['userid'],
+    'password'  => $this->smtp['password'],
+    'protocol'  => $this->email->ht['mail_protocol'],
+    'encryption' => $this->email->ht['mail_encryption']
+));
+$fetcher->connect();
+imap_append(//php.net/manual/en/function.imap-append.php
+    $fetcher->mbox,
+    $fetcher->srvstr.'Sent',
+    $mail->prepareHeaders($headers)[1] . "\r\n\r\n" . $body
+);
+// END HOTFIX
             if(!PEAR::isError($result))
                 return $messageId;
 
